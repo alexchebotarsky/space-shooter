@@ -3,27 +3,21 @@ package asteroid
 import (
 	"math/rand"
 
+	"github.com/goodleby/space-shooter/object"
 	"github.com/goodleby/space-shooter/point"
 	"github.com/goodleby/space-shooter/utils"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type Asteroid struct {
-	img *ebiten.Image
-
-	position *point.Point
-
-	rotation      float64
-	rotationSpeed float64
-
+	object            *object.Object
 	movementDirection float64
+	rotationSpeed     float64
 	movementSpeed     float64
 }
 
 func New(img *ebiten.Image) *Asteroid {
 	var a Asteroid
-
-	a.img = img
 
 	windowWidth, windowHeight := ebiten.WindowSize()
 
@@ -31,23 +25,38 @@ func New(img *ebiten.Image) *Asteroid {
 	imgHeight := float64(img.Bounds().Dy())
 
 	// Choose random side
+	var x, y, movementDirection float64
 	switch rand.Intn(4) {
 	case 0: // top
-		a.position = point.New(utils.RandFloat(-imgWidth, float64(windowWidth)), -imgHeight)
-		a.movementDirection = utils.RandFloat(0.25, 0.75) // west, south, east
+		x = utils.RandFloat(-imgWidth, float64(windowWidth))
+		y = -imgHeight
+		movementDirection = utils.RandFloat(0.25, 0.75)
 	case 1: // bottom
-		a.position = point.New(utils.RandFloat(-imgWidth, float64(windowWidth)), float64(windowHeight))
-		a.movementDirection = utils.EuclideanMod(utils.RandFloat(0.75, 1.15), 1) // east, north, west. Note: 1.15 will become 0.15 after modulo
+		x = utils.RandFloat(-imgWidth, float64(windowWidth))
+		y = float64(windowHeight)
+		movementDirection = utils.EuclideanMod(utils.RandFloat(0.75, 1.15), 1)
 	case 2: // left
-		a.position = point.New(-imgWidth, utils.RandFloat(-imgHeight, float64(windowHeight)))
-		a.movementDirection = utils.RandFloat(0, 0.5) // north, west, south
+		x = -imgWidth
+		y = utils.RandFloat(-imgHeight, float64(windowHeight))
+		movementDirection = utils.RandFloat(0, 0.5)
 	case 3: // right
-		a.position = point.New(float64(windowWidth), utils.RandFloat(-imgHeight, float64(windowHeight)))
-		a.movementDirection = utils.RandFloat(0.5, 1) // south, east, north
+		x = float64(windowWidth)
+		y = utils.RandFloat(-imgHeight, float64(windowHeight))
+		movementDirection = utils.RandFloat(0.5, 1)
 	}
 
-	a.rotation = 0
+	hitpoints := []*point.Point{
+		point.New(0.17, 0),
+		point.New(0.73, 0),
+		point.New(1, 0.49),
+		point.New(0.85, 0.9),
+		point.New(0.61, 0.84),
+		point.New(0.29, 1),
+		point.New(0, 0.61),
+	}
 
+	a.object = object.New(img, point.New(x, y), 0, hitpoints)
+	a.movementDirection = movementDirection
 	a.rotationSpeed = utils.RandFloat(-0.15, 0.15) // [-0.15; 0.15]
 	a.movementSpeed = utils.RandFloat(50, 150)     // [50; 150]
 
@@ -58,25 +67,19 @@ func (a *Asteroid) Update() {
 	rotationSpeed := a.rotationSpeed / float64(ebiten.TPS())
 	movementSpeed := a.movementSpeed / float64(ebiten.TPS())
 
-	a.position.MoveInDirection(a.movementDirection, movementSpeed)
-
-	a.rotation += rotationSpeed
-	a.rotation = utils.EuclideanMod(a.rotation, 1) // Keep rotation value within [0; 1] bounds
+	a.object.MoveInDirection(a.movementDirection, movementSpeed)
+	a.object.RotateBy(rotationSpeed)
 }
 
 func (a *Asteroid) Draw(screen *ebiten.Image) {
-	x, y := a.position.Coordinates()
-	utils.DrawImage(screen, a.img, x, y, 0.5, 0.5, a.rotation)
+	a.object.Draw(screen)
 }
 
 func (a *Asteroid) IsOutOfBounds() bool {
 	windowWidth, windowHeight := ebiten.WindowSize()
 
-	x, y := a.position.Coordinates()
+	topLeft := point.New(0, 0)
+	bottomRight := point.New(float64(windowWidth), float64(windowHeight))
 
-	if x > float64(windowWidth)*1.5 || y > float64(windowHeight)*1.5 || x < -float64(windowWidth)*0.5 || y < -float64(windowHeight)*0.5 {
-		return true
-	}
-
-	return false
+	return !a.object.IsWithinBounds(topLeft, bottomRight)
 }

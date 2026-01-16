@@ -2,7 +2,6 @@ package game
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/goodleby/space-shooter/assets"
@@ -10,7 +9,6 @@ import (
 	"github.com/goodleby/space-shooter/player"
 	"github.com/goodleby/space-shooter/timer"
 	ebiten "github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 type Game struct {
@@ -42,18 +40,19 @@ func New() (*Game, error) {
 func (g *Game) Update() error {
 	g.player.Update()
 
-	if g.asteroidSpawnTimer.IsReady() {
-		g.asteroidSpawnTimer.Reset()
+	// if g.asteroidSpawnTimer.IsReady() {
+	// 	g.asteroidSpawnTimer.Reset()
 
-		asteroidImg := g.assets.Asteroids[rand.Intn(len(g.assets.Asteroids))]
+	// 	asteroidImg := g.assets.Asteroids[0]
 
-		g.asteroids = append(g.asteroids, asteroid.New(asteroidImg))
-	}
-	g.asteroidSpawnTimer.Update()
+	// 	g.asteroids = append(g.asteroids, asteroid.New(asteroidImg))
+	// }
+	// g.asteroidSpawnTimer.Update()
 
 	for i, asteroid := range g.asteroids {
 		if asteroid.IsOutOfBounds() {
 			g.asteroids = append(g.asteroids[:i], g.asteroids[i+1:]...)
+			continue
 		}
 		asteroid.Update()
 	}
@@ -67,8 +66,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	for _, asteroid := range g.asteroids {
 		asteroid.Draw(screen)
 	}
-
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("%d", len(g.asteroids)))
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
