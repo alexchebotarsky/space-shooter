@@ -3,6 +3,7 @@ package asteroid
 import (
 	"math/rand"
 
+	"github.com/goodleby/space-shooter/hitbox"
 	"github.com/goodleby/space-shooter/point"
 	"github.com/goodleby/space-shooter/utils"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -18,12 +19,24 @@ type Asteroid struct {
 
 	movementDirection float64
 	movementSpeed     float64
+
+	hitbox *hitbox.Hitbox
 }
 
 func New(img *ebiten.Image) *Asteroid {
 	var a Asteroid
 
 	a.img = img
+
+	a.hitbox = hitbox.New(img, a.position, []*point.Point{
+		point.New(0.17, 0),
+		point.New(0.73, 0),
+		point.New(1, 0.49),
+		point.New(0.85, 0.9),
+		point.New(0.61, 0.84),
+		point.New(0.29, 1),
+		point.New(0, 0.61),
+	})
 
 	windowWidth, windowHeight := ebiten.WindowSize()
 
@@ -79,4 +92,8 @@ func (a *Asteroid) IsOutOfBounds() bool {
 	}
 
 	return false
+}
+
+func (a *Asteroid) Hitbox() *hitbox.Hitbox {
+	return a.hitbox
 }

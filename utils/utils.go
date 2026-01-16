@@ -24,14 +24,16 @@ func FlooredMod(x, y float64) float64 {
 	return math.Mod(math.Mod(x, y)+y, y)
 }
 
+// DrawImage is similar to ebiten.DrawImage, but allows specifying origin point
+// in [0;1] range rotation in full rotations.
 func DrawImage(screen *ebiten.Image, img *ebiten.Image, x, y, originX, originY, rotation float64) {
 	options := &ebiten.DrawImageOptions{}
 
 	imgWidth := float64(img.Bounds().Dx())
 	imgHeight := float64(img.Bounds().Dy())
 
-	x -= imgWidth * originX
-	y -= imgHeight * originY
+	tx := x - (imgWidth * originX)
+	ty := y - (imgHeight * originY)
 
 	// Rotate
 	options.GeoM.Translate(-imgWidth/2, -imgHeight/2)
@@ -39,7 +41,7 @@ func DrawImage(screen *ebiten.Image, img *ebiten.Image, x, y, originX, originY, 
 	options.GeoM.Translate(imgWidth, imgHeight)
 
 	// Position
-	options.GeoM.Translate(x, y)
+	options.GeoM.Translate(tx, ty)
 
 	screen.DrawImage(img, options)
 }

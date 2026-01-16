@@ -24,6 +24,14 @@ func (p *Point) Coordinates() (x, y float64) {
 	return p.x, p.y
 }
 
+func (p *Point) X() float64 {
+	return p.x
+}
+
+func (p *Point) Y() float64 {
+	return p.y
+}
+
 // MoveInDirection moves the point by the provided amount based on the
 // direction. Direction is in range [0;1) with 0 being north, 0.25 - east, 0.5 -
 // south and 0.75 - west. Note: direction can also be negative, in that case

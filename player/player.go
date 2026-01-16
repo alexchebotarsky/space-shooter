@@ -2,6 +2,8 @@ package player
 
 import (
 	"github.com/goodleby/space-shooter/assets"
+	"github.com/goodleby/space-shooter/hitbox"
+	"github.com/goodleby/space-shooter/object"
 	"github.com/goodleby/space-shooter/point"
 	"github.com/goodleby/space-shooter/utils"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -15,6 +17,10 @@ type Player struct {
 
 	movementSpeed float64 // px per second
 	rotationSpeed float64 // rotations per second
+
+	hitbox *hitbox.Hitbox
+
+	*object.Object
 }
 
 func New(assets *assets.Player) *Player {
@@ -34,6 +40,25 @@ func New(assets *assets.Player) *Player {
 
 	p.rotationSpeed = 0.75
 	p.movementSpeed = 300
+
+	p.hitbox = hitbox.New(assets.Ship, p.position, []*point.Point{
+		point.New(0.42, 0),
+		point.New(0.58, 0),
+		point.New(0.62, 0.34),
+		point.New(0.87, 0.54),
+		point.New(1, 0.37),
+		point.New(0.95, 0.86),
+		point.New(0.91, 0.78),
+		point.New(0.63, 0.87),
+		point.New(0.57, 1),
+		point.New(0.43, 1),
+		point.New(0.37, 0.87),
+		point.New(0.09, 0.78),
+		point.New(0.05, 0.86),
+		point.New(0, 0.37),
+		point.New(0.13, 0.54),
+		point.New(0.38, 0.34),
+	})
 
 	return &p
 }
@@ -58,4 +83,8 @@ func (p *Player) Update() {
 func (p *Player) Draw(screen *ebiten.Image) {
 	x, y := p.position.Coordinates()
 	utils.DrawImage(screen, p.assets.Ship, x, y, 0.5, 0.5, p.rotation)
+}
+
+func (p *Player) Hitbox() *hitbox.Hitbox {
+	return p.hitbox
 }
