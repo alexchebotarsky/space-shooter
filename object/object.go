@@ -1,59 +1,81 @@
 package object
 
 import (
-	"fmt"
 	"image/color"
-	"math"
 
+	"github.com/goodleby/space-shooter/line"
 	"github.com/goodleby/space-shooter/point"
 	"github.com/goodleby/space-shooter/utils"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type Object struct {
-	img       *ebiten.Image
-	position  *point.Point
-	rotation  float64
-	hitpoints []*point.Point
+	position     *point.Point
+	rotation     float64
+	img          *ebiten.Image
+	imgHitpoints []*point.Point
 }
 
-func New(image *ebiten.Image, position *point.Point, rotation float64, hitpoints []*point.Point) *Object {
+// New creates new object instance
+func New(position *point.Point, rotation float64, img *ebiten.Image, imgHitpoints []*point.Point) *Object {
 	var o Object
 
-	o.img = image
 	o.position = position
 	o.rotation = rotation
-	o.hitpoints = hitpoints
+	o.img = img
+	o.imgHitpoints = imgHitpoints
 
 	return &o
 }
 
-// func (o1 *Object) CheckCollision(o2 *Object) bool {
-// 	// var vA, vB *vector.Vector
+func (o *Object) Hitpoints() []*point.Point {
+	hitpoints := make([]*point.Point, 0, len(o.imgHitpoints))
 
-// 	p1 := o1.hitpoints[len(o1.hitpoints)-1]
-// 	for _, p2 := range o1.hitpoints {
-// 		// vA = vector.New(p1, p2)
-
-// 		log.Printf("Vector A: (%.1f,%.1f)-(%.1f,%.1f)", p1.X(), p1.Y(), p2.X(), p2.Y())
-
-// 		p1 = p2
-// 	}
-
-// 	return false
-// }
-
-func (o *Object) IsWithinBounds(a, b *point.Point) bool {
 	posX, posY := o.position.Coordinates()
-	imgWidth := float64(o.img.Bounds().Dx())
-	imgHeight := float64(o.img.Bounds().Dy())
+	width, height := utils.ImageSize(o.img)
 
-	for _, hp := range o.hitpoints {
-		x, y := utils.GetOriginPoint(posX, posY, imgWidth, imgHeight, o.rotation, hp.X(), hp.Y())
+	for _, p := range o.imgHitpoints {
+		localX, localY := utils.TransformedLocalPoint(p.X(), p.Y(), width, height, o.rotation, 0.5, 0.5)
+		// Absolute position + Local position - Half of the size (to center)
+		hitpoints = append(hitpoints, point.New(posX+localX-width/2, posY+localY-height/2))
+	}
 
-		if x < a.X() || y < a.Y() || x > b.X() || y > b.Y() {
+	return hitpoints
+}
+
+func (o *Object) Hitlines() []*line.Line {
+	points := o.Hitpoints()
+	lines := make([]*line.Line, 0, len(points)+1)
+
+	a := points[len(points)-1]
+	for _, b := range points {
+		lines = append(lines, line.New(a, b))
+		a = b
+	}
+
+	return lines
+}
+
+// IsIntersecting checks whether one object intersects with the other.
+func (o1 *Object) IsIntersecting(o2 *Object) bool {
+	hitlines1 := o1.Hitlines()
+	hitlines2 := o2.Hitlines()
+
+	for _, ab := range hitlines1 {
+		for _, cd := range hitlines2 {
+			if ab.IsIntersecting(cd) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (o *Object) IsOutOfBounds(min, max *point.Point) bool {
+	for _, hp := range o.Hitpoints() {
+		if !(hp.X() < min.X() || hp.X() > max.X() || hp.Y() < min.Y() || hp.Y() > max.Y()) {
 			return false
 		}
 	}
@@ -61,46 +83,38 @@ func (o *Object) IsWithinBounds(a, b *point.Point) bool {
 	return true
 }
 
+// Draw draws object's image on the screen with all transformations applied.
 func (o *Object) Draw(screen *ebiten.Image) {
-	posX, posY := o.position.Coordinates()
-	windowWidth, windowHeight := ebiten.WindowSize()
-	imgWidth := float64(o.img.Bounds().Dx())
-	imgHeight := float64(o.img.Bounds().Dy())
+	x, y := o.position.Coordinates()
+	utils.DrawImage(screen, o.img, x, y, o.rotation, 0.5, 0.5)
 
-	utils.DrawImage(screen, o.img, posX, posY, o.rotation, 0.5, 0.5)
-
-	a := o.hitpoints[len(o.hitpoints)-1]
-	for _, b := range o.hitpoints {
-		ax, ay := utils.GetOriginPoint(posX, posY, imgWidth, imgHeight, o.rotation, a.X(), a.Y())
-		bx, by := utils.GetOriginPoint(posX, posY, imgWidth, imgHeight, o.rotation, b.X(), b.Y())
-
-		vector.StrokeLine(screen, float32(ax), float32(ay), float32(bx), float32(by), 1, color.RGBA{0, 255, 0, 255}, true)
-
-		a = b
-	}
-
-	isWithinBounds := o.IsWithinBounds(point.New(0, 0), point.New(float64(windowWidth), float64(windowHeight)))
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("position(x=%.1f,y=%.1f), rotation(%.2f), isWithinBounds(%v)", posX, posY, o.rotation, isWithinBounds))
+	o.DrawHitlines(screen)
 }
 
+func (o *Object) DrawHitlines(screen *ebiten.Image) {
+	hitpoints := o.Hitpoints()
+
+	a := hitpoints[len(hitpoints)-1]
+	for _, b := range hitpoints {
+		vector.StrokeLine(screen, float32(a.X()), float32(a.Y()), float32(b.X()), float32(b.Y()), 2, color.RGBA{0, 255, 0, 0}, true)
+		a = b
+	}
+}
+
+// MoveInDirection moves the object by an amount in the given direction.
+func (o *Object) MoveInDirection(direction, amount float64) {
+	mx, my := utils.DirectionMultipliers(direction)
+	o.position.SetX(o.position.X() + amount*mx)
+	o.position.SetY(o.position.Y() + amount*my)
+}
+
+// MoveBy moves the object by an amount in the direction it's pointing at.
 func (o *Object) MoveBy(amount float64) {
 	o.MoveInDirection(o.rotation, amount)
 }
 
-// MoveInDirection moves the point by the provided amount based on the
-// direction. Direction is in range [0;1) with 0 being north, 0.25 - east, 0.5 -
-// south and 0.75 - west. Note: direction can also be negative, in that case
-// meaning of the values will be inverted as expected. This method is using
-// triangular wave function to determine how much coordinates should be moved
-// based on the direction:
-// x(r)=4|(r-0.25)%1-0.5|-1
-// y(r)=4|(r-0.5)%1-0.5|-1
-func (o *Object) MoveInDirection(direction, amount float64) {
-	o.position.SetX(o.position.X() + (4*math.Abs(utils.EuclideanMod(direction-0.25, 1)-0.5)-1)*amount)
-	o.position.SetY(o.position.Y() + (4*math.Abs(utils.EuclideanMod(direction-0.5, 1)-0.5)-1)*amount)
-}
-
+// RotateBy rotates counter clockwise the object by the given amount.
 func (o *Object) RotateBy(amount float64) {
-	// Update rotation and keep it within [0; 1) bounds
+	// Mod here is to keep the value within [0; 1) bounds
 	o.rotation = utils.EuclideanMod(o.rotation+amount, 1)
 }
