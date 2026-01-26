@@ -9,7 +9,6 @@ import (
 	"github.com/goodleby/space-shooter/player"
 	"github.com/goodleby/space-shooter/timer"
 	ebiten "github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 type Game struct {
@@ -34,7 +33,7 @@ func New() (*Game, error) {
 
 	g.player = player.New(float64(windowWidth/2), float64(windowHeight/2), &g.assets.Player)
 
-	g.asteroidSpawnTimer = timer.New(3 * time.Second)
+	g.asteroidSpawnTimer = timer.New(1500 * time.Millisecond)
 	g.asteroids = []*asteroid.Asteroid{}
 
 	return &g, nil
@@ -58,6 +57,11 @@ func (g *Game) Update() error {
 			continue
 		}
 
+		if g.player.HasHit(asteroid.Object()) {
+			g.asteroids = append(g.asteroids[:i], g.asteroids[i+1:]...)
+			continue
+		}
+
 		if asteroid.IsOutOfBounds() {
 			g.asteroids = append(g.asteroids[:i], g.asteroids[i+1:]...)
 			continue
@@ -75,8 +79,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	for _, asteroid := range g.asteroids {
 		asteroid.Draw(screen)
 	}
-
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("%d", len(g.asteroids)))
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {

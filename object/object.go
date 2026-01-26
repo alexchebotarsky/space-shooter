@@ -29,6 +29,14 @@ func New(position *point.Point, rotation float64, img *ebiten.Image, imgHitpoint
 	return &o
 }
 
+func (o *Object) Coordinates() (x, y float64) {
+	return o.position.Coordinates()
+}
+
+func (o *Object) Rotation() float64 {
+	return o.rotation
+}
+
 func (o *Object) Hitpoints() []*point.Point {
 	hitpoints := make([]*point.Point, 0, len(o.imgHitpoints))
 
@@ -88,7 +96,7 @@ func (o *Object) Draw(screen *ebiten.Image) {
 	x, y := o.position.Coordinates()
 	utils.DrawImage(screen, o.img, x, y, o.rotation, 0.5, 0.5)
 
-	o.DrawHitlines(screen)
+	// o.DrawHitlines(screen)
 }
 
 func (o *Object) DrawHitlines(screen *ebiten.Image) {
